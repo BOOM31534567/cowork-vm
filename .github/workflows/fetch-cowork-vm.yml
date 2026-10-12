@@ -29,6 +29,7 @@ jobs:
       - name: 发布为 Release
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
           cd payload
@@ -36,4 +37,3 @@ jobs:
             --notes "由 GitHub Actions 从 downloads.claude.ai 抓取并逐字节校验" \
             rootfs.vhdx.zst vmlinuz.zst initrd.zst SHA256SUMS.txt \
           || gh release upload cowork-vm-2a762adf rootfs.vhdx.zst vmlinuz.zst initrd.zst SHA256SUMS.txt --clobber
-
