@@ -2,6 +2,15 @@ name: fetch-cowork-vm-bundle
 
 on:
   workflow_dispatch:
+    inputs:
+      bundle_sha:
+        description: "bundle 版本（默认已是当前所需，不用改）"
+        required: true
+        default: "882518393ed4ce89020bd48d99d5daf114999773"
+      tag:
+        description: "发布的 Release tag"
+        required: true
+        default: "cowork-vm-882518393e"
 
 permissions:
   contents: write
@@ -14,16 +23,16 @@ jobs:
       - name: 下载并校验
         run: |
           set -euo pipefail
-          B=https://downloads.claude.ai/vms/linux/x64/2a762adfc2eea13eca0d113a2e6452ff00ae3f62
+          B=https://downloads.claude.ai/vms/linux/x64/${{ inputs.bundle_sha }}
           mkdir -p payload && cd payload
           for f in rootfs.vhdx.zst vmlinuz.zst initrd.zst; do
             echo ">>> $f"
             curl -fL --retry 8 --retry-delay 5 --retry-all-errors -C - -o "$f" "$B/$f"
             ls -l "$f"
           done
-          echo "90066a2ab3b7b406db53ba3d9e95168aeadab788d921a94bc00e94b6f1950d98  rootfs.vhdx.zst" > SHA256SUMS.txt
-          echo "8c74da17c86a7efad89b43fd0d11235dc257b13a7f56b2fdd3677d3fe3562a3e  vmlinuz.zst"     >> SHA256SUMS.txt
-          echo "6bf448d34e72d8c0bbda9c32eb3589e2b602b6c780df6880212e2cf7a778fa34  initrd.zst"      >> SHA256SUMS.txt
+          echo "5696e58a854c2fb3e14c4d78038c398671cc89cf1fcf60316c5c421825bbf5c6  rootfs.vhdx.zst" > SHA256SUMS.txt
+          echo "3118616ef6ba3866652284b8b4c224a96876c56091724c35c93caf1ccb9b50a9  vmlinuz.zst"     >> SHA256SUMS.txt
+          echo "c12df253f5ddac9f7f7cdf317c7257586d262eabd9336c1ce001301399fbe56a  initrd.zst"      >> SHA256SUMS.txt
           sha256sum -c SHA256SUMS.txt
 
       - name: 发布为 Release
@@ -33,7 +42,11 @@ jobs:
         run: |
           set -euo pipefail
           cd payload
-          gh release create cowork-vm-2a762adf --title "Cowork VM bundle 2a762adf" \
-            --notes "由 GitHub Actions 从 downloads.claude.ai 抓取并逐字节校验" \
-            rootfs.vhdx.zst vmlinuz.zst initrd.zst SHA256SUMS.txt \
-          || gh release upload cowork-vm-2a762adf rootfs.vhdx.zst vmlinuz.zst initrd.zst SHA256SUMS.txt --clobber
+          TAG="${{ inputs.tag }}"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" rootfs.vhdx.zst vmlinuz.zst initrd.zst SHA256SUMS.txt --clobber
+          else
+            gh release create "$TAG" --title "Cowork VM bundle ${{ inputs.bundle_sha }}" \
+              --notes "由 GitHub Actions 从 downloads.claude.ai 抓取并逐字节校验" \
+              rootfs.vhdx.zst vmlinuz.zst initrd.zst SHA256SUMS.txt
+          fi
